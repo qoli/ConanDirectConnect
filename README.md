@@ -1,102 +1,145 @@
 # ConanDirectConnect
 
-Small Windows helper for launching Conan Exiles into a specific server.
+ConanDirectConnect 是一個 Windows 小工具，用來從 Steam 啟動 Conan
+Exiles，並自動進入指定伺服器。
 
-It writes Conan Exiles' restart-ticket state, updates the relevant client
-`Game.ini` values, then asks Steam to start app `440900` through
-`steam://run/440900`. This keeps Steam and BattlEye in the normal launch path
-while allowing the game to consume the restart ticket for automatic server
-entry.
+它會先寫入 Conan Exiles 的 restart ticket，更新玩家端 `Game.ini`，再透過
+Steam 的 `steam://run/440900` 啟動遊戲。這樣可以保留 Steam 和 BattlEye 的
+正常啟動流程，同時讓遊戲讀取 restart ticket 自動連線。
 
-## Download
+## 下載
 
-Download the latest `ConanDirectConnect-*-windows-amd64.zip` from GitHub
-Releases, unzip it, then run `ConanDirectConnect.exe`.
+請到 GitHub Releases 下載最新版：
 
-The release artifact is intentionally a zip file instead of a bare `.exe`.
+[ConanDirectConnect Releases](https://github.com/qoli/ConanDirectConnect/releases)
 
-## Usage
+下載 `ConanDirectConnect-*-windows-amd64.zip`，解壓縮後會得到
+`ConanDirectConnect.exe`。
 
-Pass exactly one address selector:
+Release 故意用 zip 包起來，而不是直接提供裸 `.exe`，這樣比較不容易被瀏覽器
+或下載流程直接攔截。
 
-```powershell
-.\ConanDirectConnect.exe -ip 203.0.113.10
-.\ConanDirectConnect.exe -domain example.com
-```
+## 快速使用
 
-Common options:
+如果你只想直接執行，可以在 PowerShell 或命令提示字元裡使用：
 
 ```powershell
 .\ConanDirectConnect.exe -ip 203.0.113.10 -port 7777
-.\ConanDirectConnect.exe -domain conan.example.com -game-dir "D:\SteamLibrary\steamapps\common\Conan Exiles"
+```
+
+也可以使用網域：
+
+```powershell
+.\ConanDirectConnect.exe -domain conan.example.com -port 7777
+```
+
+`-ip` 需要填 IPv4 位址。`-domain` 會先解析成 IPv4，再寫入 Conan Exiles 的
+連線狀態，因為遊戲的 direct connect 目標應該是數字形式的 `IP:port`。
+
+## 建議用法：加入 Steam 捷徑
+
+推薦把 `ConanDirectConnect.exe` 加進 Steam 收藏庫，之後玩家只要按 Steam 的
+「開始遊戲」就能啟動並自動連線。
+
+### 1. 新增非 Steam 遊戲
+
+在 Steam 收藏庫左下角點「新增遊戲」，選擇「新增非 Steam 遊戲...」。
+
+![在 Steam 新增非 Steam 遊戲](docs/images/steam-step-1-add-non-steam-game.jpg)
+
+### 2. 選擇 ConanDirectConnect.exe
+
+按「瀏覽...」，找到解壓縮後的 `ConanDirectConnect.exe`，選取後加入 Steam。
+
+![選擇 ConanDirectConnect.exe](docs/images/steam-step-2-select-exe.jpg)
+
+### 3. 開啟捷徑內容
+
+在 Steam 收藏庫裡找到 `ConanDirectConnect`，右鍵選單選擇「內容...」。
+
+![開啟 ConanDirectConnect 捷徑內容](docs/images/steam-step-3-open-properties.jpg)
+
+### 4. 填入啟動選項
+
+在「啟動選項」填入伺服器位址和 port。
+
+```text
+-ip 203.0.113.10 -port 7777
+```
+
+如果你使用網域，則改成：
+
+```text
+-domain conan.example.com -port 7777
+```
+
+![填入 Steam 啟動選項](docs/images/steam-step-4-launch-options.jpg)
+
+完成後回到收藏庫，按 `ConanDirectConnect` 的「開始遊戲」即可。
+
+## 常用參數
+
+```powershell
+.\ConanDirectConnect.exe -ip 203.0.113.10 -port 7777
+.\ConanDirectConnect.exe -domain conan.example.com -port 7777
+.\ConanDirectConnect.exe -ip 203.0.113.10 -game-dir "D:\SteamLibrary\steamapps\common\Conan Exiles"
 .\ConanDirectConnect.exe -ip 203.0.113.10 -no-launch
 ```
 
-`-ip` requires an IPv4 address and skips DNS lookup. `-domain` resolves the
-domain to IPv4 before writing the restart ticket, because Conan direct connect
-expects a numeric `IP:port` target.
+`-no-launch` 只寫入 Conan Exiles 的連線狀態，不啟動 Steam。這適合用來檢查
+`ModRestartData.json` 和 `Game.ini` 是否正確。
 
-`-no-launch` writes the Conan client state without starting Steam. Use it to
-inspect `ModRestartData.json` and `Game.ini` before a real launch.
+## Mod 管理邊界
 
-## Steam Shortcut
+這個工具不管理 mod。
 
-One convenient setup is to add `ConanDirectConnect.exe` as a Steam shortcut and
-put the server arguments in Steam's launch options.
+它不查詢 A2S rules，不接收 Workshop ID 清單，不產生
+`ConanSandbox/servermodlist.txt`，也不讀取或修改
+`ConanSandbox/Mods/modlist.txt`。Mod 訂閱、下載、排序和 mismatch 處理都交給
+官方 launcher 或遊戲本身。
 
-![Steam shortcut launch options for ConanDirectConnect](docs/images/steam-shortcut-launch-options.jpg)
+它唯一寫入的 mod 相關欄位是 restart ticket 裡的 `ModList`，內容會指向已存在
+的 `ConanSandbox/servermodlist.txt`。如果這個文件不存在，工具會停止並報錯，
+不會猜測 mod 清單。
 
-## Mod Boundary
+## 這個工具會改什麼
 
-This helper does not manage mods.
+啟動前，ConanDirectConnect 會：
 
-It does not query A2S rules, does not accept a Workshop ID list, does not
-generate `ConanSandbox/servermodlist.txt`, and does not inspect or modify
-`ConanSandbox/Mods/modlist.txt`. Mod subscription, download, ordering, and
-mismatch handling remain the responsibility of the official launcher and the
-game.
+1. 尋找 Conan Exiles 的 Steam 安裝位置。
+2. 備份 `ConanSandbox\Saved\Config\Windows\Game.ini`。
+3. 設定 `SavedServers.LastConnected` 和 `SavedServers.LastPassword`。
+4. 啟用 `Settings.ModMismatch.AutoSubscribe`、`AutoConnect` 和
+   `bAutoRestart`。
+5. 寫入 `ConanSandbox\Saved\ModRestartData.json`。
+6. 用 `steam://run/440900` 啟動 Steam 裡的 Conan Exiles。
 
-The only mod-related restart-ticket field it writes is `ModList`, pointing to
-the existing `ConanSandbox/servermodlist.txt`. If that file is missing, the
-helper fails instead of guessing a mod list.
+每次執行都會在 `ConanDirectConnect.exe` 旁邊追加
+`ConanDirectConnect.log`，方便檢查收到的參數、解析後的伺服器位址、遊戲路徑、
+restart ticket 寫入狀態和啟動命令。
 
-## What It Changes
+## 從原始碼建置
 
-Before launch, the helper:
+需要：
 
-1. Locates the Conan Exiles Steam install.
-2. Backs up `ConanSandbox\Saved\Config\Windows\Game.ini`.
-3. Sets `SavedServers.LastConnected` and `SavedServers.LastPassword`.
-4. Enables `Settings.ModMismatch.AutoSubscribe`, `AutoConnect`, and
-   `bAutoRestart`.
-5. Writes `ConanSandbox\Saved\ModRestartData.json`.
-6. Starts Steam with `steam://run/440900`.
+- Go 1.22 或更新版本
+- 在 macOS 或 Linux 建立 release zip 時，需要 `zip` 和 `unzip`
 
-Each run appends diagnostics to `ConanDirectConnect.log` beside the executable.
-
-## Build
-
-Requirements:
-
-- Go 1.22 or newer
-- `zip` and `unzip` when building the release artifact on macOS or Linux
-
-Build the Windows executable:
+建置 Windows 執行檔：
 
 ```bash
 GOOS=windows GOARCH=amd64 go build -o ConanDirectConnect.exe .
 ```
 
-Build the release zip:
+建置 release zip：
 
 ```bash
 VERSION=v0.1.0 ./scripts/build-release.sh
 ```
 
-The zip is written to `dist/`.
+zip 會輸出到 `dist/`。
 
-## Notes
+## 備註
 
-The default launch mode is `steam-run`. `continue-session` and
-`launcher-connect` are retained as diagnostic modes, but Steam-run is the
-validated path.
+預設啟動模式是 `steam-run`。`continue-session` 和 `launcher-connect` 保留作為
+診斷模式，但已驗證的正常路徑是 Steam-run。
