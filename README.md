@@ -39,6 +39,13 @@ expects a numeric `IP:port` target.
 `-no-launch` writes the Conan client state without starting Steam. Use it to
 inspect `ModRestartData.json` and `Game.ini` before a real launch.
 
+## Steam Shortcut
+
+One convenient setup is to add `ConanDirectConnect.exe` as a Steam shortcut and
+put the server arguments in Steam's launch options.
+
+![Steam shortcut launch options for ConanDirectConnect](docs/images/steam-shortcut-launch-options.jpg)
+
 ## Mod Boundary
 
 This helper does not manage mods.
